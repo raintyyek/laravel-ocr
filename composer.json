@@ -1,0 +1,57 @@
+{
+    "name": "raintyyek/laravel-ocr",
+    "description": "A driver-based OCR abstraction for Laravel with Google Cloud Vision and AWS Textract engines.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "ocr", "google-vision", "aws-textract", "text-recognition"],
+    "authors": [
+        {
+            "name": "Raintyyek"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/database": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/console": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/bus": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/queue": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0"
+    },
+    "require-dev": {
+        "google/cloud-vision": "^1.7",
+        "aws/aws-sdk-php": "^3.280",
+        "orchestra/testbench": "^8.0 || ^9.0",
+        "phpunit/phpunit": "^10.0"
+    },
+    "suggest": {
+        "google/cloud-vision": "Required to use the Google Cloud Vision OCR engine (^1.7).",
+        "aws/aws-sdk-php": "Required to use the AWS Textract OCR engine (^3.280).",
+        "league/flysystem-aws-s3-v3": "Required to read S3 image sources via a Laravel filesystem disk (^3.0)."
+    },
+    "autoload": {
+        "psr-4": {
+            "Raintyyek\\Ocr\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Raintyyek\\Ocr\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Raintyyek\\Ocr\\OcrServiceProvider"
+            ],
+            "aliases": {
+                "Ocr": "Raintyyek\\Ocr\\Facades\\Ocr"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
