@@ -26,7 +26,8 @@
     },
     "suggest": {
         "google/cloud-vision": "Required to use the Google Cloud Vision OCR engine (^1.7).",
-        "aws/aws-sdk-php": "Required to use the AWS Textract OCR engine (^3.280).",
+        "aws/aws-sdk-php": "Required to use the AWS Textract OCR engine and AnalyzeExpense extraction (^3.280).",
+        "google/cloud-document-ai": "Required to use the Google Document AI structured extractor (^1.0).",
         "league/flysystem-aws-s3-v3": "Required to read S3 image sources via a Laravel filesystem disk (^3.0)."
     },
     "autoload": {

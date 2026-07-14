@@ -585,6 +585,76 @@ reports and status queries fast.
 
 ---
 
+## Document extraction (preview)
+
+Beyond raw text, the library can extract **structured fields** from invoices,
+receipts, bills, expenses and payment slips — the road to `v1.0.0`
+(see [docs/ROADMAP-1.0.md](docs/ROADMAP-1.0.md)). The offline **heuristic
+extractor** ships today:
+
+```php
+use Raintyyek\Ocr\Contracts\DocumentExtractor;
+use Raintyyek\Ocr\Support\ImageSource;
+
+$doc = app(DocumentExtractor::class)->extract(ImageSource::fromPath('/tmp/invoice.jpg'));
+
+$doc->type;                         // DocumentType::Invoice
+$doc->invoiceNumber->value;         // "INV-2026-088"
+$doc->dueDate->value;               // "2026-08-14"  (normalized, locale-aware)
+$doc->total->value->amount;         // "424.00"
+$doc->total->value->currency;       // "MYR"
+$doc->taxTotal->value->amount;      // "24.00"
+$doc->payment->method;              // "bank_transfer"
+$doc->payment->reference;           // "FT26071500123"
+
+foreach ($doc->lineItems as $item) {
+    $item->description; $item->quantity; $item->unitPrice; $item->amount;
+}
+
+$doc->isBalanced();                 // true — subtotal + tax + shipping − discount ≈ total
+$doc->confidenceBelow(0.6);         // fields a human should review
+$doc->toArray();                    // JSON-safe structure
+```
+
+The heuristic extractor is **trilingual — English, Malay and Chinese** — so
+Malaysian documents (which routinely mix the three) parse correctly: it
+understands localized labels (`Jumlah`, `Cukai`, `Tarikh`, `总计`, `发票号码`, …),
+Malay and Chinese (`年月日`) month/date formats, and currencies (`RM`, `¥`, `元`).
+The detected language is reported in `$doc->meta['language']`.
+
+Every field carries a **confidence** and the **raw text** it came from, so you
+can threshold and route low-confidence documents to review.
+
+### Free vs. paid extraction (toggle per provider)
+
+By default extraction uses the **free, offline heuristic** extractor over
+standard OCR. You can opt into a provider's **paid, higher-accuracy** structured
+API per engine — these send the image straight to the provider (their own OCR is
+included; you are *not* also charged for text OCR):
+
+```dotenv
+# AWS Textract AnalyzeExpense  (~USD 0.01/page)
+OCR_AWS_ANALYZE_EXPENSE=true
+
+# Google Document AI invoice/expense parser (~USD 0.01/page, billed in 10-page
+# blocks per document — min ~$0.10/doc). Needs a deployed processor:
+OCR_GOOGLE_DOCUMENT_AI=true
+GOOGLE_DOCAI_PROJECT=my-project
+GOOGLE_DOCAI_LOCATION=us
+GOOGLE_DOCAI_PROCESSOR=abc123
+```
+
+Routing (config `ocr.extraction.default = auto`): if the active OCR engine is
+`aws` and AnalyzeExpense is on → AWS; if `google` and Document AI is on → Google;
+**otherwise the free heuristic**. Force a specific one per call with
+`['extractor' => 'aws_expense' | 'google_docai' | 'heuristic']`. Whichever runs,
+you get the **same `ExtractedDocument`** back.
+
+```php
+$doc = app(OcrService::class)->extract('s3://invoices/88.jpg', ['engine' => 'aws']);
+// → AnalyzeExpense when OCR_AWS_ANALYZE_EXPENSE=true, else heuristic — same result shape
+```
+
 ## Error handling
 
 All library failures extend `Raintyyek\Ocr\Exceptions\OcrException`:

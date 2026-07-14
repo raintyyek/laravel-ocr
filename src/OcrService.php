@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Raintyyek\Ocr\Contracts\OcrEngine;
 use Raintyyek\Ocr\Cost\CostCalculator;
+use Raintyyek\Ocr\Documents\ExtractedDocument;
 use Raintyyek\Ocr\DTO\OcrResult;
 use Raintyyek\Ocr\Enums\OcrStatus;
 use Raintyyek\Ocr\Exceptions\OcrConfigurationException;
@@ -38,6 +39,7 @@ class OcrService
         private readonly OcrManager $engines,
         private readonly CostCalculator $cost,
         private readonly Config $config,
+        private readonly ExtractorManager $extractors,
     ) {
     }
 
@@ -48,6 +50,25 @@ class OcrService
     public function engine(?string $name = null): OcrEngine
     {
         return $this->engines->engine($name);
+    }
+
+    /**
+     * Extract structured data (invoice/receipt/… fields) from a document.
+     *
+     * Routes to the paid provider extractor (AWS AnalyzeExpense / Google Document
+     * AI) when enabled for the engine via `ocr.extraction`, otherwise uses the
+     * free heuristic extractor over standard OCR. Pass `['extractor' => …]` to
+     * force a specific one.
+     *
+     * @param  ImageSource|string   $source  An ImageSource, path, URL, or "s3://…".
+     * @param  array<string, mixed> $options e.g. `engine`, `extractor`, `as`, `date_locale`.
+     */
+    public function extract(ImageSource|string $source, array $options = []): ExtractedDocument
+    {
+        $engine = (string) ($options['engine'] ?? $this->config->get('ocr.default', 'google'));
+        $image  = $this->normalizeSource($source);
+
+        return $this->extractors->for($engine, $options)->extract($image, $options);
     }
 
     /**

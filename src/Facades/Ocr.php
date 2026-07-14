@@ -14,10 +14,11 @@ use Raintyyek\Ocr\Support\ImageSource;
 /**
  * Facade for the OCR service.
  *
- * @method static OcrCall   run(ImageSource|string $source, array $options = [])
- * @method static OcrResult recognize(ImageSource|string $source, array $options = [])
- * @method static OcrCall   process(OcrCall $call, ?ImageSource $image = null)
- * @method static OcrEngine engine(?string $name = null)
+ * @method static OcrCall           run(ImageSource|string $source, array $options = [])
+ * @method static OcrResult         recognize(ImageSource|string $source, array $options = [])
+ * @method static \Raintyyek\Ocr\Documents\ExtractedDocument extract(ImageSource|string $source, array $options = [])
+ * @method static OcrCall           process(OcrCall $call, ?ImageSource $image = null)
+ * @method static OcrEngine         engine(?string $name = null)
  *
  * @see OcrService
  */

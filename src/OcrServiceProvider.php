@@ -8,6 +8,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Support\ServiceProvider;
 use Raintyyek\Ocr\Console\ProcessPendingOcrCalls;
+use Raintyyek\Ocr\Contracts\DocumentExtractor;
 use Raintyyek\Ocr\Contracts\OcrEngine;
 use Raintyyek\Ocr\Cost\CostCalculator;
 
@@ -39,16 +40,27 @@ final class OcrServiceProvider extends ServiceProvider
             (array) $app->make(Config::class)->get('ocr.pricing', []),
         ));
 
+        // Document extraction registry (routes free heuristic vs paid AWS/Google
+        // per the ocr.extraction toggles).
+        $this->app->singleton(ExtractorManager::class, static fn ($app) => new ExtractorManager($app));
+
         // The orchestrator the facade resolves to.
         $this->app->singleton(OcrService::class, static fn ($app) => new OcrService(
             $app->make(OcrManager::class),
             $app->make(CostCalculator::class),
             $app->make(Config::class),
+            $app->make(ExtractorManager::class),
         ));
 
         // Let callers type-hint the OcrEngine contract and receive the default
         // engine, keeping application code decoupled from the manager itself.
         $this->app->bind(OcrEngine::class, static fn ($app) => $app->make(OcrManager::class)->engine());
+
+        // Type-hinting the DocumentExtractor contract yields the extractor the
+        // toggles select (free heuristic unless a paid provider is enabled).
+        $this->app->bind(DocumentExtractor::class, static fn ($app) => $app->make(ExtractorManager::class)->for());
+
+        $this->app->alias(ExtractorManager::class, 'ocr.extractors');
 
         // Friendly string aliases: app('ocr') and app('ocr.manager').
         $this->app->alias(OcrService::class, 'ocr');

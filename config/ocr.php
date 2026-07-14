@@ -85,6 +85,60 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Document Extraction (structured invoices / receipts / bills / slips)
+    |--------------------------------------------------------------------------
+    |
+    | Settings for the extraction layer that turns OCR into typed fields (totals,
+    | tax, line items, invoice no., dates, payment ref/method, …). The heuristic
+    | extractor is offline and free; cloud extractors land in later milestones.
+    | See docs/ROADMAP-1.0.md.
+    |
+    */
+
+    'extraction' => [
+        // Extractor selection:
+        //   "auto"         — pick per engine + the paid toggles below (recommended)
+        //   "heuristic"    — always use the free offline extractor
+        //   "aws_expense"  — always use AWS AnalyzeExpense
+        //   "google_docai" — always use Google Document AI
+        'default' => env('OCR_EXTRACTOR', 'auto'),
+
+        // Locale hint for date parsing. Non-US locales are parsed day-first.
+        'date_locale' => env('OCR_DATE_LOCALE', 'en_MY'),
+
+        // Fallback currency when none is detected on the document.
+        'currency' => env('OCR_DEFAULT_CURRENCY'),
+
+        // Flag extracted fields below this confidence for human review.
+        'min_field_confidence' => (float) env('OCR_MIN_FIELD_CONFIDENCE', 0.0),
+
+        /*
+        | Paid, higher-accuracy structured extraction — OFF by default. When a
+        | toggle is disabled, extraction uses the free heuristic extractor over
+        | standard OCR. When enabled, that provider's documents are sent to its
+        | expense/invoice API instead (which does its own OCR and bills per page
+        | / per document — see docs/ROADMAP-1.0.md).
+        */
+        'aws' => [
+            // AWS Textract AnalyzeExpense (~USD 0.01/page). Requires aws/aws-sdk-php.
+            'analyze_expense' => (bool) env('OCR_AWS_ANALYZE_EXPENSE', false),
+        ],
+
+        'google' => [
+            // Google Document AI Invoice/Expense parser (~USD 0.01/page, billed
+            // in 10-page blocks). Requires google/cloud-document-ai + a processor.
+            'document_ai'  => (bool) env('OCR_GOOGLE_DOCUMENT_AI', false),
+            'project_id'   => env('GOOGLE_DOCAI_PROJECT'),
+            'location'     => env('GOOGLE_DOCAI_LOCATION', 'us'),
+            'processor_id' => env('GOOGLE_DOCAI_PROCESSOR'),
+            // Reuses the Google Vision credentials by default.
+            'credentials_path' => env('GOOGLE_DOCAI_CREDENTIALS', env('GOOGLE_VISION_CREDENTIALS')),
+            'credentials_json' => env('GOOGLE_DOCAI_CREDENTIALS_JSON', env('GOOGLE_VISION_CREDENTIALS_JSON')),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Call Logging (Persistence)
     |--------------------------------------------------------------------------
     |
