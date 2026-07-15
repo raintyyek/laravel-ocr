@@ -585,11 +585,12 @@ reports and status queries fast.
 
 ---
 
-## Document extraction (preview)
+## Document extraction
 
 Beyond raw text, the library can extract **structured fields** from invoices,
-receipts, bills, expenses and payment slips — the road to `v1.0.0`
-(see [docs/ROADMAP-1.0.md](docs/ROADMAP-1.0.md)). The offline **heuristic
+receipts, bills, expenses and payment slips. Since `v1.0.2`, the heuristic
+extractor also handles mobile OCR layouts that return a block of labels followed
+by a block of values. See [docs/ROADMAP-1.0.md](docs/ROADMAP-1.0.md). The offline **heuristic
 extractor** ships today:
 
 ```php
@@ -615,6 +616,16 @@ $doc->isBalanced();                 // true — subtotal + tax + shipping − di
 $doc->confidenceBelow(0.6);         // fields a human should review
 $doc->toArray();                    // JSON-safe structure
 ```
+
+For payment-result screens, `amountPaid` and `total` contain the prominent paid
+amount, `paymentDate` includes the time when OCR provides it (`Y-m-d H:i:s`), and
+split labels such as `eWallet Reference` followed by `No.` are joined before the
+value is resolved.
+
+The bundled regression corpus exercises English, Malay, Simplified Chinese,
+Traditional Chinese, and mixed-language layouts. Run `composer test` when dev
+dependencies are installed, or `php tests/smoke.php` for the dependency-free
+accuracy check. The suite requires at least 95% target-field accuracy.
 
 The heuristic extractor is **trilingual — English, Malay and Chinese** — so
 Malaysian documents (which routinely mix the three) parse correctly: it

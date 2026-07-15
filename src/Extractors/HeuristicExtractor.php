@@ -55,7 +55,7 @@ final class HeuristicExtractor implements DocumentExtractor
     private const PO_NO      = '\b(?:p\.?\s*o\.?|purchase\s*order)\s*(?:no\.?|number|#)?\b|\b(?:no\.?\s*)?pesanan\s*belian\b|\bno\.?\s*po\b|采购订单号?|採購訂單號?|订单号码|訂單號碼|订单号|訂單號';
     private const DATE       = '\bdate\b|\btarikh\b|日期';
     private const DUE_DATE   = '\bdue\s*date\b|\bdate\s*due\b|\bpayment\s*due\b|\btarikh\s*(?:tempoh|akhir\s*bayaran|matang)\b|\btempoh\s*bayaran\b|到期日|付款到期日|截止日期';
-    private const PAY_DATE   = '\bpayment\s*date\b|\bpaid\s*on\b|\bdate\s*paid\b|\btransaction\s*date\b|\btarikh\s*(?:bayaran|pembayaran|transaksi)\b|\bdibayar\s*pada\b|付款日期|支付日期|交易日期';
+    private const PAY_DATE   = '\bpayment\s*date\b|\bpaid\s*on\b|\bdate\s*paid\b|\btransaction\s*date\b|\bdate\s*(?:&|and)\s*time\b|\btransaction\s*(?:date\s*(?:&|and)\s*)?time\b|\btarikh\s*(?:&\s*masa|dan\s*masa|bayaran|pembayaran|transaksi)\b|\bwaktu\s*(?:bayaran|pembayaran|transaksi)\b|\bdibayar\s*pada\b|付款日期|支付日期|交易日期|付款时间|付款時間|支付时间|支付時間|交易时间|交易時間';
     private const SUBTOTAL   = '\bsub[\s-]*total\b|\bjumlah\s*kecil\b|\bsub\s*jumlah\b|\bsubjumlah\b|小计|小計';
     private const TOTAL      = '\bgrand\s*total\b|\btotal\s*amount\s*payable\b|\btotal\s*payable\b|\btotal\s*amount\b|\btotal\b|\bamount\s*payable\b|\bjumlah\s*(?:besar|keseluruhan|perlu\s*dibayar)\b|\bjumlah\b|总计|總計|合计|合計|总金额|總金額|总额|總額|应付金额|應付金額|总共|總共';
     private const TAX        = '\b(?:gst|sst|vat)\b|\btax\b(?!\s*invoice)|\bcukai(?:\s*(?:jualan|perkhidmatan))?\b|消费税|消費稅|销售税|銷售稅|服务税|服務稅|税额|稅額|税费|稅費';
@@ -65,6 +65,10 @@ final class HeuristicExtractor implements DocumentExtractor
     private const BALANCE_DUE = '\b(?:balance\s*due|amount\s*due|outstanding|balance)\b|\bbaki(?:\s*perlu\s*dibayar)?\b|\bamaun\s*perlu\s*dibayar\b|应付账款|應付賬款|结余|結餘|余额|餘額|未付|尚欠|欠款';
     private const PAY_REF    = '\b(?:payment\s*ref(?:erence)?|ref(?:erence)?|approval\s*code)\s*(?:no\.?|number|#)?|\b(?:no\.?\s*)?ruj(?:ukan)?\s*(?:no\.?|#)?|\brujukan\b|参考编号|參考編號|参考号码|參考號碼|参考号|參考號|参考|參考';
     private const TXN_ID     = '\b(?:transaction\s*(?:id|no\.?|ref)|txn\s*(?:id|no\.?)|trace\s*no\.?)\b|\b(?:no\.?\s*)?transaksi\b|\bid\s*transaksi\b|交易编号|交易編號|交易号码|交易號碼|交易号|交易號|流水号|流水號';
+    private const MERCHANT   = '\bmerchant(?:\s*name)?\b|\bvendor(?:\s*name)?\b|\bsupplier(?:\s*name)?\b|\bpeniaga\b|\bpembekal\b|商户|商戶|商家|供应商|供應商';
+    private const PAY_METHOD = '\bpayment\s*method\b|\bpayment\s*mode\b|\bpaid\s*via\b|\bmethod\s*of\s*payment\b|\bkaedah\s*(?:bayaran|pembayaran)\b|\bcara\s*bayaran\b|付款方式|支付方式';
+    private const PAY_AMOUNT = '\bpayment\s*amount\b|\btransaction\s*amount\b|\bamount\b|\bamaun\s*(?:bayaran|transaksi)?\b|\bjumlah\s*bayaran\b|付款金额|付款金額|交易金额|交易金額';
+    private const ACCOUNT_NO = '\baccount\s*(?:no\.?|number|#)?\b|\bacct\s*(?:no\.?|#)?\b|\bno\.?\s*akaun\b|\bnombor\s*akaun\b|账号|賬號|账户号码|賬戶號碼|客户编号|客戶編號';
 
     // Confidence bands per strategy.
     private const CONF_LABELED = 0.55;
@@ -106,24 +110,35 @@ final class HeuristicExtractor implements DocumentExtractor
         $dayFirst = $this->isDayFirst($options);
         $currency = FieldNormalizer::currency($text) ?? ($options['currency'] ?? ($this->config['currency'] ?? null));
 
+        $type         = $this->detectType($text, $options);
         $excludeDates = $this->re(self::DUE_DATE . '|' . self::PAY_DATE);
         $taxes        = $this->extractTaxes($lines, $currency);
+        $amountPaid   = $this->moneyField($lines, $this->re(self::AMOUNT_PAID), $currency)
+            ?? $this->paymentAmountField($lines, $currency, $type);
+        $total        = $this->moneyField($lines, $this->re(self::TOTAL), $currency, $this->re(self::SUBTOTAL), lastMatch: true);
+
+        // Completed payment screens usually show one prominent amount without
+        // an invoice-style "Total" label. Expose it through both useful fields.
+        if ($type === DocumentType::PaymentSlip && $total === null) {
+            $total = $amountPaid;
+        }
 
         return new ExtractedDocument(
-            type: $this->detectType($text, $options),
+            type: $type,
             currency: $currency,
             vendor: $this->extractVendor($lines),
             invoiceNumber: $this->labeledField($lines, $this->re(self::INVOICE_NO)),
             poNumber: $this->labeledField($lines, $this->re(self::PO_NO)),
+            accountNumber: $this->labeledField($lines, $this->re(self::ACCOUNT_NO)),
             issueDate: $this->dateField($lines, $this->re(self::DATE), $dayFirst, $excludeDates),
             dueDate: $this->dateField($lines, $this->re(self::DUE_DATE), $dayFirst),
-            paymentDate: $this->dateField($lines, $this->re(self::PAY_DATE), $dayFirst),
+            paymentDate: $this->dateField($lines, $this->re(self::PAY_DATE), $dayFirst, layoutAware: true, includeTime: true),
             subtotal: $this->moneyField($lines, $this->re(self::SUBTOTAL), $currency),
             taxTotal: $this->taxTotalField($taxes, $lines, $currency),
             discountTotal: $this->moneyField($lines, $this->re(self::DISCOUNT), $currency),
             shipping: $this->moneyField($lines, $this->re(self::SHIPPING), $currency),
-            total: $this->moneyField($lines, $this->re(self::TOTAL), $currency, $this->re(self::SUBTOTAL), lastMatch: true),
-            amountPaid: $this->moneyField($lines, $this->re(self::AMOUNT_PAID), $currency),
+            total: $total,
+            amountPaid: $amountPaid,
             balanceDue: $this->moneyField($lines, $this->re(self::BALANCE_DUE), $currency),
             taxes: $taxes,
             lineItems: $this->extractLineItems($lines, $currency),
@@ -147,7 +162,7 @@ final class HeuristicExtractor implements DocumentExtractor
 
         return match (true) {
             (bool) preg_match('/credit\s*note|nota\s*kredit|贷记单|貸記單|信用票据/iu', $text) => DocumentType::CreditNote,
-            (bool) preg_match('/payment\s*(?:slip|advice|receipt)|remittance|transfer\s*(?:receipt|slip)|resit\s*bayaran|slip\s*(?:bayaran|pembayaran)|penyata\s*bayaran|付款(?:单|單|凭证|憑證|收据|收據)|转账(?:凭证|回单)|轉賬(?:憑證|回單)|汇款单|匯款單/iu', $text) => DocumentType::PaymentSlip,
+            (bool) preg_match('/payment\s*(?:slip|advice|receipt|result|confirmation|successful|success)|remittance|transfer\s*(?:receipt|slip|successful|success)|pembayaran\s*(?:berjaya|berhasil|selesai)|transaksi\s*(?:berjaya|berhasil)|resit\s*bayaran|slip\s*(?:bayaran|pembayaran)|penyata\s*bayaran|付款(?:成功|完成|单|單|凭证|憑證|收据|收據)|支付(?:成功|完成)|交易成功|转账(?:成功|凭证|回单)|轉賬(?:成功|憑證|回單)|汇款单|匯款單/iu', $text) => DocumentType::PaymentSlip,
             (bool) preg_match('/tax\s*invoice|invoice|invois(?:\s*cukai)?|发票|發票|税单|稅單/iu', $text) => DocumentType::Invoice,
             (bool) preg_match('/official\s*receipt|receipt|resit|收据|收據|收条|收條/iu', $text) => DocumentType::Receipt,
             (bool) preg_match('/statement|penyata|\bbill\b|\bbil\b|账单|賬單|结单|結單/iu', $text) => DocumentType::Bill,
@@ -175,13 +190,18 @@ final class HeuristicExtractor implements DocumentExtractor
     /** Guess the vendor as the first substantive line (often the letterhead). */
     private function extractVendor(array $lines): ?Party
     {
+        $merchant = $this->labeledField($lines, $this->re(self::MERCHANT), layoutAware: true);
+        if ($merchant !== null && $this->isPlausibleName((string) $merchant->value)) {
+            return new Party(name: (string) $merchant->value);
+        }
+
         foreach ($lines as $line) {
             $line = trim($line);
 
             if ($line === '' || mb_strlen($line) < 3) {
                 continue;
             }
-            if (preg_match($this->re(self::INVOICE_NO . '|' . self::DATE . '|receipt|resit|invoice|invois|发票|收据|收據'), $line)) {
+            if (preg_match($this->re(self::INVOICE_NO . '|' . self::DATE . '|' . self::MERCHANT . '|receipt|resit|invoice|invois|payment\s*(?:result|slip)|发票|收据|收據'), $line)) {
                 continue;
             }
 
@@ -195,7 +215,7 @@ final class HeuristicExtractor implements DocumentExtractor
      * Find a labeled string value: the text after a label on the same line, or
      * the next non-empty line if the label sits alone.
      */
-    private function labeledField(array $lines, string $pattern): ?Field
+    private function labeledField(array $lines, string $pattern, bool $layoutAware = false): ?Field
     {
         foreach ($lines as $i => $line) {
             if (! preg_match($pattern, $line, $m, PREG_OFFSET_CAPTURE)) {
@@ -206,12 +226,18 @@ final class HeuristicExtractor implements DocumentExtractor
             $after = ltrim($after, " \t:#-.）)");
 
             if ($after !== '') {
-                $value = preg_split('/\s{2,}|\s(?=[A-Z][a-z])/', $after)[0] ?? $after;
+                // Preserve ordinary spaces inside names/identifiers. Only a
+                // clear OCR column gap (2+ spaces) starts another field.
+                $value = preg_split('/\s{2,}/', $after)[0] ?? $after;
 
                 return new Field(trim($value), self::CONF_LABELED, $line);
             }
 
-            $next = $this->nextNonEmpty($lines, $i);
+            if ($layoutAware && ($layout = $this->layoutValue($lines, $i)) !== null) {
+                return new Field($layout, self::CONF_LABELED, $line . ' -> ' . $layout);
+            }
+
+            $next = $this->nextValueLine($lines, $i);
             if ($next !== null) {
                 return new Field($next, self::CONF_LABELED * 0.9, $line);
             }
@@ -221,27 +247,47 @@ final class HeuristicExtractor implements DocumentExtractor
     }
 
     /** Plain labeled string value (used by payment fields). */
-    private function labeledValue(array $lines, string $pattern): ?string
+    private function labeledValue(array $lines, string $pattern, bool $layoutAware = false): ?string
     {
-        return $this->labeledField($lines, $pattern)?->value;
+        return $this->labeledField($lines, $pattern, $layoutAware)?->value;
     }
 
     /**
      * Find a labeled date and normalize it to Y-m-d. Lines matching $exclude are
      * skipped (e.g. so the issue-date scan ignores "due"/"payment" date lines).
      */
-    private function dateField(array $lines, string $pattern, bool $dayFirst, ?string $exclude = null): ?Field
+    private function dateField(
+        array $lines,
+        string $pattern,
+        bool $dayFirst,
+        ?string $exclude = null,
+        bool $layoutAware = false,
+        bool $includeTime = false,
+    ): ?Field
     {
         foreach ($lines as $i => $line) {
             if (! preg_match($pattern, $line) || ($exclude !== null && preg_match($exclude, $line))) {
                 continue;
             }
 
-            foreach ([$line, $this->nextNonEmpty($lines, $i) ?? ''] as $candidate) {
+            $candidates = [$line];
+            if ($layoutAware && ($layout = $this->layoutValue($lines, $i)) !== null) {
+                $candidates[] = $layout;
+            }
+            $candidates[] = $this->nextValueLine($lines, $i) ?? '';
+
+            foreach (array_unique($candidates) as $candidate) {
                 if (preg_match($this->dateRegex(), $candidate, $dm)) {
                     $normalized = FieldNormalizer::date($dm[0], $dayFirst);
                     if ($normalized !== null) {
-                        return new Field($normalized, self::CONF_DATE, trim($dm[0]));
+                        if ($includeTime && preg_match('/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?\b/i', $candidate, $tm)) {
+                            $hour = (int) $tm[1];
+                            if (($tm[4] ?? '') !== '') {
+                                $hour = $hour % 12 + (strtoupper($tm[4]) === 'PM' ? 12 : 0);
+                            }
+                            $normalized .= sprintf(' %02d:%02d:%02d', $hour, (int) $tm[2], (int) ($tm[3] ?? 0));
+                        }
+                        return new Field($normalized, self::CONF_DATE, trim($candidate));
                     }
                 }
             }
@@ -282,6 +328,44 @@ final class HeuristicExtractor implements DocumentExtractor
         }
 
         return $found;
+    }
+
+    /** Find the prominent transaction amount on a payment-result screen. */
+    private function paymentAmountField(array $lines, ?string $currency, DocumentType $type): ?Field
+    {
+        if ($type !== DocumentType::PaymentSlip) {
+            return null;
+        }
+
+        $labeled = $this->moneyField($lines, $this->re(self::PAY_AMOUNT), $currency);
+        if ($labeled !== null) {
+            return $labeled;
+        }
+
+        $best = null;
+        $bestScore = -1;
+        $topThird = max(2, (int) ceil(count($lines) / 3));
+
+        foreach ($lines as $i => $line) {
+            $money = $this->lastAmount($line, $currency, false);
+            if ($money === null || ($money->toFloat() ?? 0.0) <= 0) {
+                continue;
+            }
+
+            $score = 1;
+            $score += FieldNormalizer::currency($line) !== null ? 4 : 0;
+            $score += $i <= $topThird ? 2 : 0;
+            $context = implode(' ', array_slice($lines, max(0, $i - 2), 5));
+            $score += preg_match('/\b(?:paid|successful|success|payment\s*result|amount)\b|dibayar|berjaya|已付|成功/iu', $context) ? 2 : 0;
+            $score -= preg_match($this->re(self::BALANCE_DUE . '|' . self::SUBTOTAL . '|' . self::TAX), $line) ? 4 : 0;
+
+            if ($score > $bestScore) {
+                $best = new Field($money, 0.65, trim($line));
+                $bestScore = $score;
+            }
+        }
+
+        return $bestScore >= 3 ? $best : null;
     }
 
     /**
@@ -339,18 +423,22 @@ final class HeuristicExtractor implements DocumentExtractor
     /** Best-effort payment method / reference / transaction id. */
     private function extractPayment(array $lines, string $text): ?PaymentInfo
     {
+        $methodValue = $this->labeledValue($lines, $this->re(self::PAY_METHOD), layoutAware: true);
+        // Prefer the labeled value, but retain full-text fallback for documents
+        // whose OCR omitted or misaligned the method label.
+        $methodText = ($methodValue ?? '') . "\n" . $text;
         $method = match (true) {
-            (bool) preg_match('/bank\s*transfer|fund\s*transfer|fpx|duitnow|ibg|rtgs|telegraphic|giro|wire|pindahan|pemindahan|银行转账|銀行轉賬|转账|轉賬|汇款|匯款/iu', $text) => 'bank_transfer',
-            (bool) preg_match('/credit\s*card|debit\s*card|visa|master\s*card|amex|\bcard\b|kad\s*(?:kredit|debit)|信用卡|借记卡|借記卡|刷卡|\bcard\b/iu', $text) => 'card',
-            (bool) preg_match('/e-?wallet|grab\s*pay|tng|touch\s*.?n\s*go|boost|shopee\s*pay|paypal|qr\s*pay|e-?dompet|电子钱包|電子錢包|扫码|掃碼/iu', $text) => 'e_wallet',
-            (bool) preg_match('/\bcheque\b|\bcheck\b|\bcek\b|支票/iu', $text) => 'cheque',
-            (bool) preg_match('/\bcash\b|tunai|现金|現金/iu', $text)          => 'cash',
+            (bool) preg_match('/bank(?:ing)?\s*transfer|online\s*banking|fund\s*transfer|fpx|duitnow|ibg|rtgs|telegraphic|giro|wire|pindahan|pemindahan|银行转账|銀行轉賬|转账|轉賬|汇款|匯款/iu', $methodText) => 'bank_transfer',
+            (bool) preg_match('/credit\s*card|debit\s*card|visa|master\s*card|amex|\bcard\b|kad\s*(?:kredit|debit)|信用卡|借记卡|借記卡|刷卡/iu', $methodText) => 'card',
+            (bool) preg_match('/e[\s-]?wallet|grab\s*pay|tng|touch\s*.?n\s*go|boost|shopee\s*pay|paypal|alipay|wechat\s*pay|qr\s*pay|e[\s-]?dompet|电子钱包|電子錢包|支付宝|支付寶|微信支付|扫码|掃碼/iu', $methodText) => 'e_wallet',
+            (bool) preg_match('/\bcheque\b|\bcheck\b|\bcek\b|支票/iu', $methodText) => 'cheque',
+            (bool) preg_match('/\bcash\b|tunai|现金|現金/iu', $methodText)          => 'cash',
             default                                                          => null,
         };
 
-        $reference     = $this->labeledValue($lines, $this->re(self::PAY_REF));
-        $transactionId = $this->labeledValue($lines, $this->re(self::TXN_ID));
-        $paid          = preg_match('/\bpaid\b|payment\s*received|settled|telah\s*dibayar|已付|已收|付讫|付訖/iu', $text) ? true : null;
+        $reference     = $this->labeledValue($lines, $this->re(self::PAY_REF), layoutAware: true);
+        $transactionId = $this->labeledValue($lines, $this->re(self::TXN_ID), layoutAware: true);
+        $paid          = preg_match('/\bpaid\b|payment\s*(?:received|successful|success|completed)|settled|(?:pembayaran|transaksi)\s*(?:berjaya|berhasil|selesai)|telah\s*dibayar|付款成功|支付成功|交易成功|轉賬成功|转账成功|已付|已收|付讫|付訖/iu', $text) ? true : null;
 
         if ($method === null && $reference === null && $transactionId === null && $paid === null) {
             return null;
@@ -671,6 +759,69 @@ final class HeuristicExtractor implements DocumentExtractor
         $next = trim($lines[$i + 1] ?? '');
 
         return $next === '' ? null : $next;
+    }
+
+    /**
+     * Return the next actual value, skipping OCR-split label suffixes such as
+     * the standalone "No." in "Reference" / "No." / "ABC123".
+     */
+    private function nextValueLine(array $lines, int $i): ?string
+    {
+        for ($j = $i + 1, $max = min(count($lines), $i + 4); $j < $max; $j++) {
+            $candidate = trim($lines[$j]);
+            if ($candidate === '' || preg_match('/^(?:no\.?|number|#|id)\s*[:#.-]?$/iu', $candidate)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve mobile/two-column OCR reading order. OCR frequently emits a run
+     * of labels followed by a run of values, for example:
+     * Merchant / Date & Time / Shop Name / 26-10-2023 12:45.
+     */
+    private function layoutValue(array $lines, int $labelIndex): ?string
+    {
+        $start = $labelIndex;
+        while ($start > 0 && $this->isPaymentLayoutLabel($lines[$start - 1])) {
+            $start--;
+        }
+
+        $end = $labelIndex + 1;
+        while ($end < count($lines) && $this->isPaymentLayoutLabel($lines[$end])) {
+            $end++;
+        }
+
+        if ($end - $start > 1) {
+            $valueIndex = $end + ($labelIndex - $start);
+            $candidate = trim($lines[$valueIndex] ?? '');
+            if ($candidate !== '' && ! $this->isPaymentLayoutLabel($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $this->nextValueLine($lines, $labelIndex);
+    }
+
+    private function isPaymentLayoutLabel(string $line): bool
+    {
+        return (bool) preg_match(
+            $this->re(self::MERCHANT . '|' . self::PAY_DATE . '|' . self::PAY_REF . '|' . self::TXN_ID . '|' . self::PAY_METHOD),
+            trim($line),
+        );
+    }
+
+    private function isPlausibleName(string $value): bool
+    {
+        return mb_strlen(trim($value)) >= 2
+            && ! preg_match($this->dateRegex(), $value)
+            && ! preg_match('/^(?:paid|successful|success|done|failed|pending|no\.?|number)$/iu', trim($value))
+            && ! preg_match('/^' . self::MONEY_LOOSE . '$/u', trim($value))
+            && ! $this->isPaymentLayoutLabel($value);
     }
 
     /** Compile a raw en|ms|zh alternation into a case-insensitive Unicode regex. */

@@ -10,6 +10,28 @@ See [VERSIONING.md](VERSIONING.md) for the release policy and roadmap.
 
 _Nothing yet._
 
+## [1.0.2] - 2026-07-16
+
+### Improved
+
+- Heuristic extraction now understands mobile/two-column OCR reading order,
+  where consecutive labels are followed by consecutive values.
+- Payment-result screens now expose their prominent transaction amount as both
+  `amountPaid` and `total`, even when the screen has no explicit amount label.
+- Merchant/vendor labels, `Date & Time`, split `Reference` / `No.` labels, and
+  more payment-result and payment-method variants are recognized.
+- Added localized account-number extraction and expanded payment-success,
+  timestamp, transfer, card, wallet, and paid-status terms across English,
+  Malay, Simplified Chinese, and Traditional Chinese documents.
+- Multi-word labeled values such as merchant names are preserved instead of
+  being truncated at capitalized words.
+- Payment dates retain an available time as `Y-m-d H:i:s`; date-only documents
+  continue to return `Y-m-d`.
+- Added a 14-document multilingual regression corpus covering payment slips,
+  invoices, receipts, bills, totals, dates, accounts, line items, payment
+  methods, merchants, and references. The suite enforces at least 95% target-
+  field accuracy and currently passes all 123 expected fields.
+
 ## [1.0.0] - 2026-07-15
 
 First stable release.
@@ -55,5 +77,6 @@ First stable release.
 - **`FieldNormalizer`** — shared date/money/currency normalization used by every
   extractor.
 
-[Unreleased]: https://github.com/raintyyek/laravel-ocr/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/raintyyek/laravel-ocr/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/raintyyek/laravel-ocr/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/raintyyek/laravel-ocr/releases/tag/v1.0.0

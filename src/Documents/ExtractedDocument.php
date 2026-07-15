@@ -36,7 +36,7 @@ final class ExtractedDocument
         public readonly ?Field $invoiceNumber = null,
         public readonly ?Field $poNumber = null,
         public readonly ?Field $accountNumber = null,
-        // Dates (Field value = 'Y-m-d' string)
+        // Dates (Field value = 'Y-m-d'; paymentDate may be 'Y-m-d H:i:s')
         public readonly ?Field $issueDate = null,
         public readonly ?Field $dueDate = null,
         public readonly ?Field $paymentDate = null,
