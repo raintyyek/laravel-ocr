@@ -10,6 +10,22 @@ See [VERSIONING.md](VERSIONING.md) for the release policy and roadmap.
 
 _Nothing yet._
 
+## [1.1.0] - 2026-07-16
+
+### Added
+
+- **Native PDF support in the OCR engines** (no rasterization/Imagick needed):
+  - **Google Vision** reads PDF bytes directly via `batchAnnotateFiles`
+    (`DOCUMENT_TEXT_DETECTION`), merging the first 5 pages (synchronous limit)
+    into one `OcrResult` with `meta['pages']` and `meta['source'] = 'pdf'`.
+  - **AWS Textract** reads single-page PDF from an **S3 source** (its sync API
+    accepts PDF only from S3); a PDF passed as inline bytes now fails with an
+    actionable message pointing at S3 or the Google engine, rather than a cryptic
+    provider error. Multi-page PDF still requires Textract's async operations.
+
+PDFs now flow through `recognize()` / `run()` / `extract()` like any image
+(detected by the `%PDF` header) — the app-level service no longer needs Imagick.
+
 ## [1.0.3] - 2026-07-16
 
 ### Added

@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Raintyyek\Ocr\Engines\Google;
 
+use Google\Cloud\Vision\V1\AnnotateFileRequest;
 use Google\Cloud\Vision\V1\Block;
+use Google\Cloud\Vision\V1\Feature;
+use Google\Cloud\Vision\V1\Feature\Type;
 use Google\Cloud\Vision\V1\ImageAnnotatorClient;
+use Google\Cloud\Vision\V1\ImageContext;
+use Google\Cloud\Vision\V1\InputConfig;
 use Google\Cloud\Vision\V1\Page;
 use Google\Cloud\Vision\V1\Paragraph;
 use Google\Cloud\Vision\V1\Symbol;
@@ -26,10 +31,16 @@ use Throwable;
  * OCR engine backed by Google Cloud Vision.
  *
  * Uses the `documentTextDetection` / `textDetection` helpers on the official
- * `ImageAnnotatorClient`. The full text annotation is walked down to word
- * granularity so callers get both the concatenated text and positioned blocks.
+ * `ImageAnnotatorClient` for images. The full text annotation is walked down to
+ * word granularity so callers get both the concatenated text and positioned
+ * blocks.
+ *
+ * **PDF** input (detected by the `%PDF` header) is handled natively via
+ * `batchAnnotateFiles` (inline bytes, the first 5 pages synchronously) — no
+ * rasterization or S3 required; every page's annotation is merged into one result.
  *
  * @see https://cloud.google.com/vision/docs/ocr
+ * @see https://cloud.google.com/vision/docs/file-small-batch
  */
 final class GoogleVisionEngine extends AbstractOcrEngine
 {
@@ -43,14 +54,21 @@ final class GoogleVisionEngine extends AbstractOcrEngine
     public function recognize(ImageSource $image, array $options = []): OcrResult
     {
         $options = $this->resolveOptions($options);
-        $client  = $this->client();
+        $bytes   = $image->bytes();
+
+        // PDFs go through the file-annotation API, not image annotation.
+        if (str_starts_with($bytes, '%PDF')) {
+            return $this->recognizePdf($bytes, $options);
+        }
+
+        $client = $this->client();
 
         try {
             // "document" mode is optimised for dense text (invoices, receipts);
             // "text" mode is better for sparse text in natural scenes.
             $response = ($options['mode'] ?? 'document') === 'text'
-                ? $client->textDetection($image->bytes(), $this->imageContext($options))
-                : $client->documentTextDetection($image->bytes(), $this->imageContext($options));
+                ? $client->textDetection($bytes, $this->imageContext($options))
+                : $client->documentTextDetection($bytes, $this->imageContext($options));
 
             if ($response->getError() !== null && $response->getError()->getCode() !== 0) {
                 throw new OcrProcessingException(sprintf(
@@ -69,6 +87,71 @@ final class GoogleVisionEngine extends AbstractOcrEngine
                 blocks: $this->applyConfidenceFilter($blocks, $options),
                 raw: $response,
                 meta: ['pages' => $annotation ? count($annotation->getPages()) : 0],
+            );
+        } catch (OcrProcessingException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw OcrProcessingException::from($this->name(), $e);
+        }
+    }
+
+    /**
+     * Recognize a PDF via `batchAnnotateFiles`, merging each page's annotation
+     * into a single result. Synchronous file annotation covers the first 5 pages.
+     *
+     * @param  array<string, mixed> $options
+     */
+    private function recognizePdf(string $pdfBytes, array $options): OcrResult
+    {
+        $client = $this->client();
+
+        try {
+            $request = (new AnnotateFileRequest())
+                ->setInputConfig(
+                    (new InputConfig())->setContent($pdfBytes)->setMimeType('application/pdf')
+                )
+                ->setFeatures([(new Feature())->setType(Type::DOCUMENT_TEXT_DETECTION)]);
+
+            $hints = $options['language_hints'] ?? [];
+            if ($hints !== []) {
+                $request->setImageContext((new ImageContext())->setLanguageHints($hints));
+            }
+
+            $batch = $client->batchAnnotateFiles([$request]);
+
+            $text   = '';
+            $blocks = [];
+            $pages  = 0;
+
+            foreach ($batch->getResponses() as $fileResponse) {
+                foreach ($fileResponse->getResponses() as $pageResponse) {
+                    $error = $pageResponse->getError();
+                    if ($error !== null && $error->getCode() !== 0) {
+                        throw new OcrProcessingException(sprintf(
+                            'Google Vision returned an error on a PDF page: %s',
+                            $error->getMessage(),
+                        ));
+                    }
+
+                    $annotation = $pageResponse->getFullTextAnnotation();
+                    if ($annotation === null) {
+                        continue;
+                    }
+
+                    $text .= ($text === '' ? '' : "\n\n") . $annotation->getText();
+                    foreach ($this->extractBlocks($annotation->getPages()) as $block) {
+                        $blocks[] = $block;
+                    }
+                    $pages++;
+                }
+            }
+
+            return new OcrResult(
+                engine: $this->name(),
+                text: $text,
+                blocks: $this->applyConfidenceFilter($blocks, $options),
+                raw: $batch,
+                meta: ['pages' => $pages, 'source' => 'pdf'],
             );
         } catch (OcrProcessingException $e) {
             throw $e;

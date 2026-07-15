@@ -24,6 +24,12 @@ use Throwable;
  * `['s3' => ['bucket' => ..., 'name' => ...]]` in the options to skip the
  * upload and let Textract read straight from the bucket.
  *
+ * **PDF:** Textract's synchronous API accepts single-page PDF only from an S3
+ * object (not from inline bytes). So a PDF works when the source is S3; a PDF
+ * passed as inline bytes raises a clear error pointing at S3 or the Google
+ * engine (which reads PDF bytes directly). Multi-page PDFs require Textract's
+ * asynchronous operations, which this synchronous engine does not use.
+ *
  * @see https://docs.aws.amazon.com/textract/latest/dg/API_DetectDocumentText.html
  */
 final class AwsTextractEngine extends AbstractOcrEngine
@@ -58,6 +64,8 @@ final class AwsTextractEngine extends AbstractOcrEngine
                     'pages' => $result->search('DocumentMetadata.Pages') ?? 1,
                 ],
             );
+        } catch (OcrProcessingException $e) {
+            throw $e;
         } catch (Throwable $e) {
             throw OcrProcessingException::from($this->name(), $e);
         }
@@ -105,6 +113,7 @@ final class AwsTextractEngine extends AbstractOcrEngine
     private function buildDocument(ImageSource $image, array $options): array
     {
         if (! empty($options['s3']['bucket']) && ! empty($options['s3']['name'])) {
+            // Textract reads single-page PDF (and images) straight from S3.
             return [
                 'S3Object' => array_filter([
                     'Bucket'  => $options['s3']['bucket'],
@@ -114,7 +123,19 @@ final class AwsTextractEngine extends AbstractOcrEngine
             ];
         }
 
-        return ['Bytes' => $image->bytes()];
+        $bytes = $image->bytes();
+
+        // Textract's synchronous API rejects PDF supplied as inline bytes; PDF is
+        // only accepted from S3. Fail with an actionable message rather than a
+        // cryptic UnsupportedDocumentException.
+        if (str_starts_with($bytes, '%PDF')) {
+            throw new OcrProcessingException(
+                'AWS Textract cannot OCR a PDF from inline bytes — its synchronous API accepts PDF only from an S3 '
+                . 'object (single page). Provide the PDF via an S3 source, or use the Google engine, which reads PDF bytes directly.'
+            );
+        }
+
+        return ['Bytes' => $bytes];
     }
 
     /**
