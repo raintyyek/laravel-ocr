@@ -58,7 +58,7 @@ final class HeuristicExtractor implements DocumentExtractor
     private const PAY_DATE   = '\bpayment\s*date\b|\bpaid\s*on\b|\bdate\s*paid\b|\btransaction\s*date\b|\bdate\s*(?:&|\/|and)\s*time\b|\btransaction\s*(?:date\s*(?:&|\/|and)\s*)?time\b|\btarikh\s*(?:&\s*masa|dan\s*masa|bayaran|pembayaran|transaksi)\b|\bwaktu\s*(?:bayaran|pembayaran|transaksi)\b|\bdibayar\s*pada\b|付款日期|支付日期|交易日期|付款时间|付款時間|支付时间|支付時間|交易时间|交易時間';
     private const SUBTOTAL   = '\bsub[\s-]*total\b|\bjumlah\s*kecil\b|\bsub\s*jumlah\b|\bsubjumlah\b|小计|小計';
     private const TOTAL      = '\bgrand\s*total\b|\btotal\s*amount\s*payable\b|\btotal\s*payable\b|\btotal\s*amount\b|\btotal\b|\bamount\s*payable\b|\bjumlah\s*(?:besar|keseluruhan|perlu\s*dibayar)\b|\bjumlah\b|总计|總計|合计|合計|总金额|總金額|总额|總額|应付金额|應付金額|总共|總共';
-    private const TAX        = '\b(?:gst|sst|vat)\b|\btax\b(?!\s*invoice)|\bcukai(?:\s*(?:jualan|perkhidmatan))?\b|消费税|消費稅|销售税|銷售稅|服务税|服務稅|税额|稅額|税费|稅費';
+    private const TAX        = '\b(?:gst|sst|vat)\b|\btax\b(?!\s*invoice)|\bcukai(?:\s*(?:jualan|perkhidmatan))?\b|消费税|消費稅|销售税|銷售稅|服务税|服務稅|营业税|營業稅|税额|稅額|税费|稅費';
     private const DISCOUNT   = '\bdiscount\b|\bdiskaun\b|折扣|优惠|優惠|折让|折讓';
     private const SHIPPING   = '\b(?:shipping|delivery|freight|postage)\b|\b(?:kos\s*)?penghantaran\b|运费|運費|邮费|郵費|配送费|配送費|快递费|快遞費';
     private const AMOUNT_PAID = '\b(?:amount\s*paid|paid\s*amount|payment\s*received)\b|\b(?:(?:jumlah|amaun)\s*dibayar|telah\s*dibayar)\b|已付款|已付|实付|實付|付款金额|付款金額|已收|实收|實收';
@@ -163,6 +163,7 @@ final class HeuristicExtractor implements DocumentExtractor
 
         return match (true) {
             (bool) preg_match('/credit\s*note|nota\s*kredit|贷记单|貸記單|信用票据/iu', $text) => DocumentType::CreditNote,
+            (bool) preg_match('/expense\s*(?:report|claim|reimbursement|statement)|tuntutan\s*(?:perbelanjaan|belanja)|penyata\s*perbelanjaan|报销单|報銷單|费用报销|費用報銷/iu', $text) => DocumentType::Expense,
             (bool) preg_match('/payment\s*(?:slip|advice|receipt|result|confirmation|successful|success)|transaction\s*type[\s\S]*\bsuccessful\b|remittance|transfer\s*(?:receipt|slip|successful|success)|pembayaran\s*(?:berjaya|berhasil|selesai)|transaksi\s*(?:berjaya|berhasil)|resit\s*bayaran|slip\s*(?:bayaran|pembayaran)|penyata\s*bayaran|付款(?:成功|完成|单|單|凭证|憑證|收据|收據)|支付(?:成功|完成)|交易成功|转账(?:成功|凭证|回单)|轉賬(?:成功|憑證|回單)|汇款单|匯款單/iu', $text) => DocumentType::PaymentSlip,
             (bool) preg_match('/tax\s*invoice|invoice|invois(?:\s*cukai)?|发票|發票|税单|稅單/iu', $text) => DocumentType::Invoice,
             (bool) preg_match('/official\s*receipt|receipt|resit|收据|收據|收条|收條/iu', $text) => DocumentType::Receipt,

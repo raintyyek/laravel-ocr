@@ -8,13 +8,30 @@ See [VERSIONING.md](VERSIONING.md) for the release policy and roadmap.
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.0.3] - 2026-07-16
+
+### Added
+
+- `DocumentType::Expense` detection for expense reports / claims (English,
+  Malay `tuntutan perbelanjaan`, Chinese `报销单/報銷單`).
+- `NT$` / `TWD` currency detection and Taiwan business tax (`營業稅` / `营业税`).
+
 ### Improved
 
 - Payment-history screens now handle negative debit displays, `Date/Time`,
   explicit e-wallet methods alongside bank names, OCR-truncated Malaysian
   `SDN` merchant suffixes, and wallet references wrapped around their label.
-- Expanded the multilingual regression corpus to 15 documents and 132 expected
-  fields; all currently pass.
+- Broadened the multilingual regression corpus to **33 documents / 277 target
+  fields** spanning invoices, receipts, bills, credit notes, expense claims and
+  payment slips across English / Malay / Simplified & Traditional Chinese —
+  covering discounts, shipping, multi-item tables, partial payments, thousands
+  separators, comma-decimal (EUR) grouping, long/abbreviated month-name dates,
+  US month-first dates, currency-code suffixes, cheque / FPX / card / e-wallet /
+  cash methods, and rounding / change lines.
+- **Heuristic accuracy is now gated at 100%** of target fields — both the
+  `tests/smoke.php` runner and the PHPUnit corpus test fail below 100% (was 95%).
 
 ## [1.0.2] - 2026-07-16
 

@@ -77,9 +77,9 @@ namespace {
     }
 
     $accuracy = $total > 0 ? $passed / $total : 0.0;
-    if ($accuracy < 0.95) {
+    if ($accuracy < 1.0) {
         fwrite(STDERR, "FAILED\n- " . implode("\n- ", $failures) . PHP_EOL);
-        fwrite(STDERR, sprintf('Accuracy: %d/%d (%.2f%%), required: 95.00%%', $passed, $total, $accuracy * 100) . PHP_EOL);
+        fwrite(STDERR, sprintf('Accuracy: %d/%d (%.2f%%), required: 100.00%%', $passed, $total, $accuracy * 100) . PHP_EOL);
         exit(1);
     }
 

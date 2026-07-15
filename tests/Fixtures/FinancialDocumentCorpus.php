@@ -157,4 +157,181 @@ return [
             'payment_reference' => '20260713w3243MY17165001911308', 'payment_method' => 'e_wallet', 'paid' => true,
         ],
     ],
+    [
+        'name' => 'English invoice with discount, shipping and three items',
+        'locale' => 'en_MY',
+        'text' => "Globex Trading Sdn Bhd\nTax Invoice\nInvoice No: GBX-3001\nDate: 10/07/2026\nDue Date: 09/08/2026\nDescription  Qty  Unit Price  Amount\nWidget A  2  RM 30.00  RM 60.00\nWidget B  1  RM 40.00  RM 40.00\nCable  5  RM 4.00  RM 20.00\nSubtotal RM 120.00\nDiscount RM 20.00\nShipping RM 10.00\nSST 8% RM 8.80\nGrand Total RM 118.80",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'MYR', 'vendor' => 'Globex Trading Sdn Bhd',
+            'invoice_number' => 'GBX-3001', 'issue_date' => '2026-07-10', 'due_date' => '2026-08-09',
+            'subtotal' => '120.00', 'tax_total' => '8.80', 'total' => '118.80', 'line_items_min' => 3,
+        ],
+    ],
+    [
+        'name' => 'European invoice with comma-decimal grouping (EUR)',
+        'locale' => 'en_MY',
+        'text' => "Muller GmbH\nRechnung / Invoice\nInvoice No: DE-9001\nDate: 05/07/2026\nSubtotal EUR 1.000,00\nVAT 19% EUR 190,00\nTotal EUR 1.190,00",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'EUR', 'vendor' => 'Muller GmbH',
+            'invoice_number' => 'DE-9001', 'issue_date' => '2026-07-05',
+            'subtotal' => '1000.00', 'tax_total' => '190.00', 'total' => '1190.00',
+        ],
+    ],
+    [
+        'name' => 'British receipt paid by card (GBP)',
+        'locale' => 'en_MY',
+        'text' => "The Corner Shop\nReceipt\nReceipt No: UK-220\nDate: 16/07/2026\nTotal GBP 45.50\nPayment Method: Credit Card\nPaid",
+        'expected' => [
+            'type' => 'receipt', 'currency' => 'GBP', 'vendor' => 'The Corner Shop',
+            'invoice_number' => 'UK-220', 'issue_date' => '2026-07-16', 'total' => '45.50',
+            'payment_method' => 'card', 'paid' => true,
+        ],
+    ],
+    [
+        'name' => 'Cheque payment advice',
+        'locale' => 'en_MY',
+        'text' => "Payment Advice\nMerchant: Ace Hardware\nPayment Amount: RM 500.00\nTransaction Date: 12/07/2026\nReference No: CHQ-889\nPayment Method: Cheque\nPaid",
+        'expected' => [
+            'type' => 'payment_slip', 'currency' => 'MYR', 'vendor' => 'Ace Hardware',
+            'amount_paid' => '500.00', 'payment_date' => '2026-07-12',
+            'payment_reference' => 'CHQ-889', 'payment_method' => 'cheque', 'paid' => true,
+        ],
+    ],
+    [
+        'name' => 'FPX online banking payment',
+        'locale' => 'en_MY',
+        'text' => "Payment Successful\nMerchant: Online Store MY\nPayment Amount: RM 89.90\nTransaction Date: 14/07/2026 16:30:00\nReference No: FPX1234567\nPayment Method: FPX\nPaid",
+        'expected' => [
+            'type' => 'payment_slip', 'currency' => 'MYR', 'vendor' => 'Online Store MY',
+            'amount_paid' => '89.90', 'payment_date' => '2026-07-14 16:30:00',
+            'payment_reference' => 'FPX1234567', 'payment_method' => 'bank_transfer', 'paid' => true,
+        ],
+    ],
+    [
+        'name' => 'US month-first invoice with partial payment',
+        'locale' => 'en_US',
+        'text' => "Sunrise Corp\nInvoice\nInvoice No: US-500\nDate: 07/10/2026\nDue Date: 08/10/2026\nSubtotal \$1,000.00\nTax \$80.00\nTotal \$1,080.00\nAmount Paid \$500.00\nBalance Due \$580.00",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'USD', 'vendor' => 'Sunrise Corp',
+            'invoice_number' => 'US-500', 'issue_date' => '2026-07-10', 'due_date' => '2026-08-10',
+            'subtotal' => '1000.00', 'tax_total' => '80.00', 'total' => '1080.00',
+            'amount_paid' => '500.00', 'balance_due' => '580.00',
+        ],
+    ],
+    [
+        'name' => 'English credit note',
+        'locale' => 'en_MY',
+        'text' => "ACME Supplies Sdn Bhd\nCredit Note\nCredit Note No: CN-2026-01\nDate: 16/07/2026\nSubtotal RM 100.00\nSST 8% RM 8.00\nTotal RM 108.00",
+        'expected' => [
+            'type' => 'credit_note', 'currency' => 'MYR', 'vendor' => 'ACME Supplies Sdn Bhd',
+            'issue_date' => '2026-07-16', 'subtotal' => '100.00', 'tax_total' => '8.00', 'total' => '108.00',
+        ],
+    ],
+    [
+        'name' => 'English expense claim',
+        'locale' => 'en_MY',
+        'text' => "Expense Claim\nStaff: Sarah Lim\nDate: 16/07/2026\nTotal RM 250.00",
+        'expected' => [
+            'type' => 'expense', 'currency' => 'MYR', 'issue_date' => '2026-07-16', 'total' => '250.00',
+        ],
+    ],
+    [
+        'name' => 'Thai QR payment slip (THB)',
+        'locale' => 'en_MY',
+        'text' => "Payment Successful\nMerchant: Bangkok Cafe\nPayment Amount: THB 350.00\nTransaction Date: 15/07/2026 12:00:00\nReference No: TH-778\nPayment Method: QR Pay\nPaid",
+        'expected' => [
+            'type' => 'payment_slip', 'currency' => 'THB', 'vendor' => 'Bangkok Cafe',
+            'amount_paid' => '350.00', 'payment_date' => '2026-07-15 12:00:00',
+            'payment_reference' => 'TH-778', 'payment_method' => 'e_wallet', 'paid' => true,
+        ],
+    ],
+    [
+        'name' => 'Malay invoice with discount',
+        'locale' => 'ms_MY',
+        'text' => "Perniagaan Setia\nINVOIS CUKAI\nNo. Invois: PS-700\nTarikh: 12/07/2026\nPerihal  Kuantiti  Harga  Jumlah\nBarang A  3  RM 20,00  RM 60,00\nJumlah Kecil RM 60,00\nDiskaun RM 10,00\nCukai Jualan 8% RM 4,00\nJumlah Keseluruhan RM 54,00",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'MYR', 'vendor' => 'Perniagaan Setia', 'language' => 'ms',
+            'invoice_number' => 'PS-700', 'issue_date' => '2026-07-12',
+            'subtotal' => '60.00', 'tax_total' => '4.00', 'total' => '54.00', 'line_items_min' => 1,
+        ],
+    ],
+    [
+        'name' => 'Simplified Chinese cash receipt',
+        'locale' => 'zh_CN',
+        'text' => "北京餐厅\n收据\n收据号码：BJ-101\n日期：2026年7月16日\n总计 ¥68.00\n现金\n已付",
+        'expected' => [
+            'type' => 'receipt', 'currency' => 'CNY', 'vendor' => '北京餐厅', 'language' => 'zh',
+            'invoice_number' => 'BJ-101', 'issue_date' => '2026-07-16', 'total' => '68.00',
+            'payment_method' => 'cash', 'paid' => true,
+        ],
+    ],
+    [
+        'name' => 'English GST invoice',
+        'locale' => 'en_MY',
+        'text' => "Old Trade Sdn Bhd\nTax Invoice\nInvoice No: OT-01\nDate: 16/07/2026\nSubtotal RM 100.00\nGST 6% RM 6.00\nTotal RM 106.00",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'MYR', 'vendor' => 'Old Trade Sdn Bhd',
+            'invoice_number' => 'OT-01', 'issue_date' => '2026-07-16',
+            'subtotal' => '100.00', 'tax_total' => '6.00', 'total' => '106.00',
+        ],
+    ],
+    [
+        'name' => 'Receipt with abbreviated month-name date',
+        'locale' => 'en_MY',
+        'text' => "Cafe Mocha\nReceipt\nReceipt No: CM-77\nDate: 16-Jul-2026\nTotal RM 18.50\nCash\nPaid",
+        'expected' => [
+            'type' => 'receipt', 'currency' => 'MYR', 'vendor' => 'Cafe Mocha',
+            'invoice_number' => 'CM-77', 'issue_date' => '2026-07-16', 'total' => '18.50',
+            'payment_method' => 'cash', 'paid' => true,
+        ],
+    ],
+    [
+        'name' => 'US invoice with long month-name date',
+        'locale' => 'en_US',
+        'text' => "Sunset LLC\nInvoice\nInvoice No: SL-9\nDate: July 16, 2026\nTotal \$99.00",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'USD', 'vendor' => 'Sunset LLC',
+            'invoice_number' => 'SL-9', 'issue_date' => '2026-07-16', 'total' => '99.00',
+        ],
+    ],
+    [
+        'name' => 'Receipt with currency code suffix',
+        'locale' => 'en_MY',
+        'text' => "Kedai Test\nReceipt\nReceipt No: KT-1\nDate: 16/07/2026\nTotal 45.50 MYR\nCash",
+        'expected' => [
+            'type' => 'receipt', 'currency' => 'MYR', 'vendor' => 'Kedai Test',
+            'invoice_number' => 'KT-1', 'issue_date' => '2026-07-16', 'total' => '45.50',
+            'payment_method' => 'cash',
+        ],
+    ],
+    [
+        'name' => 'Receipt with rounding and change lines',
+        'locale' => 'en_MY',
+        'text' => "Mini Mart\nReceipt\nReceipt No: MM-5\nDate: 16/07/2026\nSubtotal RM 9.85\nRounding RM 0.05\nTotal RM 9.90\nCash RM 10.00\nChange RM 0.10",
+        'expected' => [
+            'type' => 'receipt', 'currency' => 'MYR', 'vendor' => 'Mini Mart',
+            'invoice_number' => 'MM-5', 'issue_date' => '2026-07-16',
+            'subtotal' => '9.85', 'total' => '9.90', 'payment_method' => 'cash',
+        ],
+    ],
+    [
+        'name' => 'Invoice with large thousands-separated amounts',
+        'locale' => 'en_MY',
+        'text' => "Big Corp Sdn Bhd\nTax Invoice\nInvoice No: BC-1\nDate: 16/07/2026\nSubtotal RM 1,234,567.89\nSST 8% RM 98,765.43\nTotal RM 1,333,333.32",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'MYR', 'vendor' => 'Big Corp Sdn Bhd',
+            'invoice_number' => 'BC-1', 'issue_date' => '2026-07-16',
+            'subtotal' => '1234567.89', 'tax_total' => '98765.43', 'total' => '1333333.32',
+        ],
+    ],
+    [
+        'name' => 'Traditional Chinese invoice with business tax',
+        'locale' => 'zh_TW',
+        'text' => "台灣科技股份有限公司\n統一發票\n發票號碼：TW-5001\n日期：2026年7月16日\n小計 NT\$ 500.00\n營業稅 5% NT\$ 25.00\n總計 NT\$ 525.00",
+        'expected' => [
+            'type' => 'invoice', 'currency' => 'TWD', 'vendor' => '台灣科技股份有限公司', 'language' => 'zh',
+            'invoice_number' => 'TW-5001', 'issue_date' => '2026-07-16',
+            'subtotal' => '500.00', 'tax_total' => '25.00', 'total' => '525.00',
+        ],
+    ],
 ];

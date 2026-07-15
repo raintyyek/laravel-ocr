@@ -12,7 +12,7 @@ use Raintyyek\Ocr\OcrManager;
 
 final class HeuristicExtractorTest extends TestCase
 {
-    public function test_multilingual_corpus_meets_95_percent_target_field_accuracy(): void
+    public function test_multilingual_corpus_meets_100_percent_target_field_accuracy(): void
     {
         /** @var list<array{name: string, locale: string, text: string, expected: array<string, scalar>}> $corpus */
         $corpus = require dirname(__DIR__) . '/Fixtures/FinancialDocumentCorpus.php';
@@ -36,8 +36,8 @@ final class HeuristicExtractorTest extends TestCase
         }
 
         $accuracy = $passed / $total;
-        self::assertGreaterThanOrEqual(
-            0.95,
+        self::assertSame(
+            1.0,
             $accuracy,
             implode("\n", $failures) . sprintf("\nAccuracy: %d/%d (%.2f%%)", $passed, $total, $accuracy * 100),
         );
@@ -62,7 +62,7 @@ final class HeuristicExtractorTest extends TestCase
         self::assertTrue($document->payment?->paid);
 
         // Eight correct target fields out of eight for this layout; the broader
-        // corpus test enforces the package-wide 95% target.
+        // corpus test enforces the package-wide 100% target.
         $expected = [
             DocumentType::PaymentSlip,
             'MYR',
@@ -85,7 +85,7 @@ final class HeuristicExtractorTest extends TestCase
         ];
 
         $correct = count(array_filter(array_map(static fn ($a, $e) => $a === $e, $actual, $expected)));
-        self::assertGreaterThanOrEqual(0.95, $correct / count($expected));
+        self::assertSame(1.0, $correct / count($expected));
     }
 
     public function test_invoice_fields_and_line_items_remain_supported(): void

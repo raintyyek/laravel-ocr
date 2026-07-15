@@ -58,6 +58,7 @@ MINOR while on 0.x). Adding support for a newer Laravel is a MINOR/PATCH.
 | **0.x**    | Stabilize the API from real usage; add PHPUnit coverage; tune cost/pagination; possible small breaking tweaks (each as a MINOR). |
 | **1.0.0**  | **Structured financial-document extraction** — invoices, receipts, bills, expenses, payment slips → typed fields (totals, tax, line items, invoice no., due/payment dates, payment ref/method, …). API frozen under the SemVer BC guarantee. See [docs/ROADMAP-1.0.md](docs/ROADMAP-1.0.md). |
 | **1.0.2**  | More accurate multilingual heuristic extraction for payment slips and financial documents, backed by a corpus-level 95% target-field accuracy gate. |
+| **1.0.3**  | Broader corpus (33 docs / 277 target fields; adds expense claims, credit notes, `NT$`/`TWD`, Taiwan business tax, discounts/shipping, thousands & comma-decimal grouping, month-name dates) with the heuristic accuracy gate raised to **100%**. |
 | **1.x**    | More extractors (Azure Document Intelligence), async multi-page/PDF, vendor templates, batch — all backwards-compatible MINORs. |
 | **2.0.0**  | Reserved for the next unavoidable breaking change (e.g. a required PHP/Laravel bump or a DTO redesign). |
 

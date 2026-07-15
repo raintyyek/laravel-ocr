@@ -83,12 +83,13 @@ final class FieldNormalizer
     /** Detect a currency code from a symbol/code anywhere in the text. */
     public static function currency(string $text): ?string
     {
-        if (preg_match('/\b(MYR|USD|SGD|EUR|GBP|AUD|IDR|THB|PHP|JPY|CNY|HKD|RMB)\b/i', $text, $m)) {
+        if (preg_match('/\b(MYR|USD|SGD|EUR|GBP|AUD|IDR|THB|PHP|JPY|CNY|HKD|TWD|RMB)\b/i', $text, $m)) {
             return strtoupper($m[1]) === 'RMB' ? 'CNY' : strtoupper($m[1]);
         }
 
         return match (true) {
             str_contains($text, 'RM')  => 'MYR',
+            str_contains($text, 'NT$') => 'TWD',
             str_contains($text, 'HK$') => 'HKD',
             str_contains($text, 'S$')  => 'SGD',
             str_contains($text, '€')   => 'EUR',
