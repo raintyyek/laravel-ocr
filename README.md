@@ -625,7 +625,8 @@ value is resolved.
 The bundled regression corpus exercises English, Malay, Simplified Chinese,
 Traditional Chinese, and mixed-language layouts. Run `composer test` when dev
 dependencies are installed, or `php tests/smoke.php` for the dependency-free
-accuracy check. The suite requires at least 95% target-field accuracy.
+accuracy check. The suite requires at least 95% target-field accuracy and also
+covers narrow payment-history screenshots with wrapped references.
 
 The heuristic extractor is **trilingual — English, Malay and Chinese** — so
 Malaysian documents (which routinely mix the three) parse correctly: it

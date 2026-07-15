@@ -55,7 +55,7 @@ final class HeuristicExtractor implements DocumentExtractor
     private const PO_NO      = '\b(?:p\.?\s*o\.?|purchase\s*order)\s*(?:no\.?|number|#)?\b|\b(?:no\.?\s*)?pesanan\s*belian\b|\bno\.?\s*po\b|采购订单号?|採購訂單號?|订单号码|訂單號碼|订单号|訂單號';
     private const DATE       = '\bdate\b|\btarikh\b|日期';
     private const DUE_DATE   = '\bdue\s*date\b|\bdate\s*due\b|\bpayment\s*due\b|\btarikh\s*(?:tempoh|akhir\s*bayaran|matang)\b|\btempoh\s*bayaran\b|到期日|付款到期日|截止日期';
-    private const PAY_DATE   = '\bpayment\s*date\b|\bpaid\s*on\b|\bdate\s*paid\b|\btransaction\s*date\b|\bdate\s*(?:&|and)\s*time\b|\btransaction\s*(?:date\s*(?:&|and)\s*)?time\b|\btarikh\s*(?:&\s*masa|dan\s*masa|bayaran|pembayaran|transaksi)\b|\bwaktu\s*(?:bayaran|pembayaran|transaksi)\b|\bdibayar\s*pada\b|付款日期|支付日期|交易日期|付款时间|付款時間|支付时间|支付時間|交易时间|交易時間';
+    private const PAY_DATE   = '\bpayment\s*date\b|\bpaid\s*on\b|\bdate\s*paid\b|\btransaction\s*date\b|\bdate\s*(?:&|\/|and)\s*time\b|\btransaction\s*(?:date\s*(?:&|\/|and)\s*)?time\b|\btarikh\s*(?:&\s*masa|dan\s*masa|bayaran|pembayaran|transaksi)\b|\bwaktu\s*(?:bayaran|pembayaran|transaksi)\b|\bdibayar\s*pada\b|付款日期|支付日期|交易日期|付款时间|付款時間|支付时间|支付時間|交易时间|交易時間';
     private const SUBTOTAL   = '\bsub[\s-]*total\b|\bjumlah\s*kecil\b|\bsub\s*jumlah\b|\bsubjumlah\b|小计|小計';
     private const TOTAL      = '\bgrand\s*total\b|\btotal\s*amount\s*payable\b|\btotal\s*payable\b|\btotal\s*amount\b|\btotal\b|\bamount\s*payable\b|\bjumlah\s*(?:besar|keseluruhan|perlu\s*dibayar)\b|\bjumlah\b|总计|總計|合计|合計|总金额|總金額|总额|總額|应付金额|應付金額|总共|總共';
     private const TAX        = '\b(?:gst|sst|vat)\b|\btax\b(?!\s*invoice)|\bcukai(?:\s*(?:jualan|perkhidmatan))?\b|消费税|消費稅|销售税|銷售稅|服务税|服務稅|税额|稅額|税费|稅費';
@@ -66,7 +66,8 @@ final class HeuristicExtractor implements DocumentExtractor
     private const PAY_REF    = '\b(?:payment\s*ref(?:erence)?|ref(?:erence)?|approval\s*code)\s*(?:no\.?|number|#)?|\b(?:no\.?\s*)?ruj(?:ukan)?\s*(?:no\.?|#)?|\brujukan\b|参考编号|參考編號|参考号码|參考號碼|参考号|參考號|参考|參考';
     private const TXN_ID     = '\b(?:transaction\s*(?:id|no\.?|ref)|txn\s*(?:id|no\.?)|trace\s*no\.?)\b|\b(?:no\.?\s*)?transaksi\b|\bid\s*transaksi\b|交易编号|交易編號|交易号码|交易號碼|交易号|交易號|流水号|流水號';
     private const MERCHANT   = '\bmerchant(?:\s*name)?\b|\bvendor(?:\s*name)?\b|\bsupplier(?:\s*name)?\b|\bpeniaga\b|\bpembekal\b|商户|商戶|商家|供应商|供應商';
-    private const PAY_METHOD = '\bpayment\s*method\b|\bpayment\s*mode\b|\bpaid\s*via\b|\bmethod\s*of\s*payment\b|\bkaedah\s*(?:bayaran|pembayaran)\b|\bcara\s*bayaran\b|付款方式|支付方式';
+    private const PAY_METHOD = '\bpayment\s*method\b|\bpayment\s*mode\b|\bpaid\s*via\b|\bpay\s*via\b|\bmethod\s*of\s*payment\b|\bkaedah\s*(?:bayaran|pembayaran)\b|\bcara\s*bayaran\b|付款方式|支付方式';
+    private const PAY_METHOD_EXPLICIT = '\bpayment\s*method\b|\bpayment\s*mode\b|\bpaid\s*via\b|\bmethod\s*of\s*payment\b|\bkaedah\s*(?:bayaran|pembayaran)\b|\bcara\s*bayaran\b|付款方式|支付方式';
     private const PAY_AMOUNT = '\bpayment\s*amount\b|\btransaction\s*amount\b|\bamount\b|\bamaun\s*(?:bayaran|transaksi)?\b|\bjumlah\s*bayaran\b|付款金额|付款金額|交易金额|交易金額';
     private const ACCOUNT_NO = '\baccount\s*(?:no\.?|number|#)?\b|\bacct\s*(?:no\.?|#)?\b|\bno\.?\s*akaun\b|\bnombor\s*akaun\b|账号|賬號|账户号码|賬戶號碼|客户编号|客戶編號';
 
@@ -162,7 +163,7 @@ final class HeuristicExtractor implements DocumentExtractor
 
         return match (true) {
             (bool) preg_match('/credit\s*note|nota\s*kredit|贷记单|貸記單|信用票据/iu', $text) => DocumentType::CreditNote,
-            (bool) preg_match('/payment\s*(?:slip|advice|receipt|result|confirmation|successful|success)|remittance|transfer\s*(?:receipt|slip|successful|success)|pembayaran\s*(?:berjaya|berhasil|selesai)|transaksi\s*(?:berjaya|berhasil)|resit\s*bayaran|slip\s*(?:bayaran|pembayaran)|penyata\s*bayaran|付款(?:成功|完成|单|單|凭证|憑證|收据|收據)|支付(?:成功|完成)|交易成功|转账(?:成功|凭证|回单)|轉賬(?:成功|憑證|回單)|汇款单|匯款單/iu', $text) => DocumentType::PaymentSlip,
+            (bool) preg_match('/payment\s*(?:slip|advice|receipt|result|confirmation|successful|success)|transaction\s*type[\s\S]*\bsuccessful\b|remittance|transfer\s*(?:receipt|slip|successful|success)|pembayaran\s*(?:berjaya|berhasil|selesai)|transaksi\s*(?:berjaya|berhasil)|resit\s*bayaran|slip\s*(?:bayaran|pembayaran)|penyata\s*bayaran|付款(?:成功|完成|单|單|凭证|憑證|收据|收據)|支付(?:成功|完成)|交易成功|转账(?:成功|凭证|回单)|轉賬(?:成功|憑證|回單)|汇款单|匯款單/iu', $text) => DocumentType::PaymentSlip,
             (bool) preg_match('/tax\s*invoice|invoice|invois(?:\s*cukai)?|发票|發票|税单|稅單/iu', $text) => DocumentType::Invoice,
             (bool) preg_match('/official\s*receipt|receipt|resit|收据|收據|收条|收條/iu', $text) => DocumentType::Receipt,
             (bool) preg_match('/statement|penyata|\bbill\b|\bbil\b|账单|賬單|结单|結單/iu', $text) => DocumentType::Bill,
@@ -192,7 +193,12 @@ final class HeuristicExtractor implements DocumentExtractor
     {
         $merchant = $this->labeledField($lines, $this->re(self::MERCHANT), layoutAware: true);
         if ($merchant !== null && $this->isPlausibleName((string) $merchant->value)) {
-            return new Party(name: (string) $merchant->value);
+            $name = trim((string) $merchant->value);
+            if (preg_match('/\bSDN\.?$/iu', $name)) {
+                $name .= ' BHD';
+            }
+
+            return new Party(name: $name);
         }
 
         foreach ($lines as $line) {
@@ -348,8 +354,14 @@ final class HeuristicExtractor implements DocumentExtractor
 
         foreach ($lines as $i => $line) {
             $money = $this->lastAmount($line, $currency, false);
-            if ($money === null || ($money->toFloat() ?? 0.0) <= 0) {
+            if ($money === null || ($money->toFloat() ?? 0.0) === 0.0) {
                 continue;
+            }
+
+            // Payment-history screens commonly render outgoing debits with a
+            // minus sign; the extracted paid amount is an absolute magnitude.
+            if (($money->toFloat() ?? 0.0) < 0) {
+                $money = new Money($this->fmt(abs((float) $money->toFloat())), $money->currency);
             }
 
             $score = 1;
@@ -423,22 +435,16 @@ final class HeuristicExtractor implements DocumentExtractor
     /** Best-effort payment method / reference / transaction id. */
     private function extractPayment(array $lines, string $text): ?PaymentInfo
     {
-        $methodValue = $this->labeledValue($lines, $this->re(self::PAY_METHOD), layoutAware: true);
-        // Prefer the labeled value, but retain full-text fallback for documents
-        // whose OCR omitted or misaligned the method label.
-        $methodText = ($methodValue ?? '') . "\n" . $text;
-        $method = match (true) {
-            (bool) preg_match('/bank(?:ing)?\s*transfer|online\s*banking|fund\s*transfer|fpx|duitnow|ibg|rtgs|telegraphic|giro|wire|pindahan|pemindahan|银行转账|銀行轉賬|转账|轉賬|汇款|匯款/iu', $methodText) => 'bank_transfer',
-            (bool) preg_match('/credit\s*card|debit\s*card|visa|master\s*card|amex|\bcard\b|kad\s*(?:kredit|debit)|信用卡|借记卡|借記卡|刷卡/iu', $methodText) => 'card',
-            (bool) preg_match('/e[\s-]?wallet|grab\s*pay|tng|touch\s*.?n\s*go|boost|shopee\s*pay|paypal|alipay|wechat\s*pay|qr\s*pay|e[\s-]?dompet|电子钱包|電子錢包|支付宝|支付寶|微信支付|扫码|掃碼/iu', $methodText) => 'e_wallet',
-            (bool) preg_match('/\bcheque\b|\bcheck\b|\bcek\b|支票/iu', $methodText) => 'cheque',
-            (bool) preg_match('/\bcash\b|tunai|现金|現金/iu', $methodText)          => 'cash',
-            default                                                          => null,
-        };
+        $methodValue = $this->labeledValue($lines, $this->re(self::PAY_METHOD_EXPLICIT), layoutAware: true);
+        // An explicit "Payment Method" value is authoritative. Only scan the
+        // full page when the labeled value is absent or unrecognized, avoiding
+        // bank names elsewhere overriding "eWallet Balance".
+        $method = $this->normalizePaymentMethod($methodValue ?? '')
+            ?? $this->normalizePaymentMethod($text);
 
-        $reference     = $this->labeledValue($lines, $this->re(self::PAY_REF), layoutAware: true);
+        $reference     = $this->paymentReference($lines);
         $transactionId = $this->labeledValue($lines, $this->re(self::TXN_ID), layoutAware: true);
-        $paid          = preg_match('/\bpaid\b|payment\s*(?:received|successful|success|completed)|settled|(?:pembayaran|transaksi)\s*(?:berjaya|berhasil|selesai)|telah\s*dibayar|付款成功|支付成功|交易成功|轉賬成功|转账成功|已付|已收|付讫|付訖/iu', $text) ? true : null;
+        $paid          = preg_match('/\bpaid\b|\bsuccessful\b|payment\s*(?:received|successful|success|completed)|settled|(?:pembayaran|transaksi)\s*(?:berjaya|berhasil|selesai)|telah\s*dibayar|付款成功|支付成功|交易成功|轉賬成功|转账成功|已付|已收|付讫|付訖/iu', $text) ? true : null;
 
         if ($method === null && $reference === null && $transactionId === null && $paid === null) {
             return null;
@@ -450,6 +456,53 @@ final class HeuristicExtractor implements DocumentExtractor
             transactionId: $transactionId,
             paid: $paid,
         );
+    }
+
+    private function normalizePaymentMethod(string $text): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/e[\s-]?wallet|grab\s*pay|tng|touch\s*.?n\s*go|boost|shopee\s*pay|paypal|alipay|wechat\s*pay|qr\s*pay|e[\s-]?dompet|电子钱包|電子錢包|支付宝|支付寶|微信支付|扫码|掃碼/iu', $text) => 'e_wallet',
+            (bool) preg_match('/bank(?:ing)?\s*transfer|online\s*banking|fund\s*transfer|fpx|duitnow|ibg|rtgs|telegraphic|giro|wire|pindahan|pemindahan|银行转账|銀行轉賬|转账|轉賬|汇款|匯款/iu', $text) => 'bank_transfer',
+            (bool) preg_match('/credit\s*card|debit\s*card|visa|master\s*card|amex|\bcard\b|kad\s*(?:kredit|debit)|信用卡|借记卡|借記卡|刷卡/iu', $text) => 'card',
+            (bool) preg_match('/\bcheque\b|\bcheck\b|\bcek\b|支票/iu', $text) => 'cheque',
+            (bool) preg_match('/\bcash\b|tunai|现金|現金/iu', $text) => 'cash',
+            default => null,
+        };
+    }
+
+    /** Resolve ordinary and OCR-wrapped payment references. */
+    private function paymentReference(array $lines): ?string
+    {
+        $pattern = $this->re(self::PAY_REF);
+
+        foreach ($lines as $i => $line) {
+            if (! preg_match($pattern, $line)) {
+                continue;
+            }
+
+            $value = $this->labeledField($lines, $pattern, layoutAware: true)?->value;
+            if (! is_string($value) || $value === '') {
+                return null;
+            }
+
+            $previous = trim($lines[$i - 1] ?? '');
+            if (preg_match('/^[\p{L}\d][\p{L}\d-]{7,}$/u', $previous)
+                && ! preg_match($this->dateRegex(), $previous)
+                && ! $this->isPaymentLayoutLabel($previous)) {
+                $value = $previous . $value;
+
+                // Known wallet-history references are 29 characters. Some
+                // narrow screenshots OCR the final glyph twice.
+                if (preg_match('/^\d{8}[A-Za-z]\d{4}[A-Za-z]{2}\d{15}$/', $value)
+                    && substr($value, -1) === substr($value, -2, 1)) {
+                    $value = substr($value, 0, -1);
+                }
+            }
+
+            return $value;
+        }
+
+        return null;
     }
 
     /**

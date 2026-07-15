@@ -147,4 +147,14 @@ return [
             'payment_reference' => 'MIX-20260716-88', 'payment_method' => 'e_wallet', 'paid' => true,
         ],
     ],
+    [
+        'name' => 'DuitNow payment history with wrapped wallet reference',
+        'locale' => 'en_MY',
+        'text' => "12:45'e\n← Details\n-RM11.95\nTransaction Type\nO points\nD DuitNow QR\nDut\nMerchant\nPay Via\nAA MANAGEMENT SDN\nPublic Bank Berhad DuitNow QR\nPayment Details\nDuit Now QR - AA\nMANAGEMENT SDN\nPayment Method\nDate/Time\neWallet Balance\n13/07/2026 10:36:05\n20260713w3243MY1\nWallet Ref\n71650019113088\nStatus\nSuccessful\n2026213452300QR3209\nTransaction No.\n1022\n203232043256870\nDuitNow Ref No.\n91022\nWant to earn points?\n☑\nHome\nTransfer\nActivity\nProfile",
+        'expected' => [
+            'type' => 'payment_slip', 'currency' => 'MYR', 'vendor' => 'AA MANAGEMENT SDN BHD',
+            'amount_paid' => '11.95', 'total' => '11.95', 'payment_date' => '2026-07-13 10:36:05',
+            'payment_reference' => '20260713w3243MY17165001911308', 'payment_method' => 'e_wallet', 'paid' => true,
+        ],
+    ],
 ];

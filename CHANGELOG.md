@@ -8,7 +8,13 @@ See [VERSIONING.md](VERSIONING.md) for the release policy and roadmap.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Improved
+
+- Payment-history screens now handle negative debit displays, `Date/Time`,
+  explicit e-wallet methods alongside bank names, OCR-truncated Malaysian
+  `SDN` merchant suffixes, and wallet references wrapped around their label.
+- Expanded the multilingual regression corpus to 15 documents and 132 expected
+  fields; all currently pass.
 
 ## [1.0.2] - 2026-07-16
 
