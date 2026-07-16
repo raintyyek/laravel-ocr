@@ -10,6 +10,26 @@ See [VERSIONING.md](VERSIONING.md) for the release policy and roadmap.
 
 _Nothing yet._
 
+## [1.2.0] - 2026-07-16
+
+### Fixed
+
+- **`Ocr::extract()` now records an `OcrCall`.** Previously only `Ocr::run()`
+  persisted to `ocr_calls`; structured extraction ran without logging, so
+  extraction calls left no audit/cost trail. Extraction now creates a call
+  (status, per-step logs, cost, the OCR text, and the extracted `document`),
+  respecting `ocr.database.enabled`.
+
+### Added
+
+- `ocr_calls` columns: `operation` ("recognize" | "extract"), `extractor`
+  (heuristic / aws_expense / google_docai), `document_type`, and `document`
+  (the full `ExtractedDocument`). **Run `php artisan migrate`** after upgrading.
+- `OcrCall::markExtracted()` and `document` cast.
+
+> Upgrade note: this adds columns to `ocr_calls`, so run `php artisan migrate`
+> — otherwise `Ocr::run()`/`Ocr::extract()` will error on the missing columns.
+
 ## [1.1.0] - 2026-07-16
 
 ### Added

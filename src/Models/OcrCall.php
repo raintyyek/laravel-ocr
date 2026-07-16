@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Raintyyek\Ocr\Cost\CostEstimate;
+use Raintyyek\Ocr\Documents\ExtractedDocument;
 use Raintyyek\Ocr\DTO\BoundingBox;
 use Raintyyek\Ocr\DTO\OcrResult;
 use Raintyyek\Ocr\DTO\Point;
@@ -29,6 +30,10 @@ use Raintyyek\Ocr\Support\ImageSource;
  * @property int         $id
  * @property string      $uuid
  * @property string      $engine
+ * @property string      $operation
+ * @property string|null $extractor
+ * @property string|null $document_type
+ * @property array|null  $document
  * @property OcrStatus   $status
  * @property string|null $source_type
  * @property array|null  $source
@@ -63,6 +68,7 @@ class OcrCall extends Model
             'source'             => 'array',
             'options'            => 'array',
             'blocks'             => 'array',
+            'document'           => 'array',
             'meta'               => 'array',
             'logs'               => 'array',
             'pages'              => 'integer',
@@ -128,6 +134,41 @@ class OcrCall extends Model
         $this->appendLog('info', sprintf(
             'Completed: %d block(s), cost %s %.6f.',
             count($result->blocks),
+            $cost->currency,
+            $cost->amount,
+        ));
+        $this->save();
+
+        return $this;
+    }
+
+    /**
+     * Persist a successful structured-extraction outcome: the extracted document,
+     * plus the underlying OCR result (when available) and computed cost.
+     */
+    public function markExtracted(ExtractedDocument $document, ?OcrResult $ocr, CostEstimate $cost): self
+    {
+        $this->status        = OcrStatus::Completed;
+        $this->document_type = $document->type->value;
+        $this->document      = $document->toArray();
+
+        if ($ocr !== null) {
+            $this->text               = $ocr->text;
+            $this->blocks             = array_map(static fn (TextBlock $b) => $b->toArray(), $ocr->blocks);
+            $this->meta               = $ocr->meta;
+            $this->average_confidence = $ocr->averageConfidence();
+        }
+
+        $this->pages         = (int) ($ocr?->meta['pages'] ?? $document->meta['pages'] ?? 1);
+        $this->cost          = $cost->amount;
+        $this->cost_currency = $cost->currency;
+        $this->cost_units    = $cost->units;
+        $this->completed_at  = $this->freshTimestamp();
+        $this->duration_ms   = $this->elapsedMs();
+        $this->appendLog('info', sprintf(
+            'Extracted %s via %s, cost %s %.6f.',
+            $document->type->value,
+            $this->extractor ?? 'extractor',
             $cost->currency,
             $cost->amount,
         ));

@@ -29,8 +29,10 @@ use Throwable;
  *   3. Either run it inline or hand it off to the background, per config.
  *   4. On execution, invoke the engine, compute cost, and persist the result.
  *
- * Two entry points serve different needs:
- *   - {@see run()}       — the full, persisted, cost-tracked, schedulable flow.
+ * Entry points serve different needs:
+ *   - {@see run()}       — full OCR: persisted, cost-tracked, schedulable.
+ *   - {@see extract()}   — structured extraction; also persisted as an OcrCall
+ *                          (operation "extract") when `ocr.database.enabled`.
  *   - {@see recognize()} — a stateless one-shot returning a raw {@see OcrResult}.
  */
 class OcrService
@@ -65,10 +67,33 @@ class OcrService
      */
     public function extract(ImageSource|string $source, array $options = []): ExtractedDocument
     {
-        $engine = (string) ($options['engine'] ?? $this->config->get('ocr.default', 'google'));
-        $image  = $this->normalizeSource($source);
+        $engine    = (string) ($options['engine'] ?? $this->config->get('ocr.default', 'google'));
+        $image     = $this->normalizeSource($source);
+        $extractor = $this->extractors->for($engine, $options);
 
-        return $this->extractors->for($engine, $options)->extract($image, $options);
+        // No persistence when call logging is disabled — behave statelessly.
+        if (! $this->databaseEnabled()) {
+            return $extractor->extract($image, $options);
+        }
+
+        $call = $this->createCall($engine, $image, $options, scheduled: false, operation: 'extract', extractor: $extractor->name());
+        $call->markProcessing();
+
+        try {
+            $document = $extractor->extract($image, $options);
+            $ocr      = $document->source; // present for the heuristic extractor; null for cloud ones
+            $cost     = $ocr !== null
+                ? $this->cost->forResult($engine, $ocr)
+                : $this->cost->forUnits($engine, (int) ($document->meta['pages'] ?? 1));
+
+            $call->markExtracted($document, $ocr, $cost);
+
+            return $document;
+        } catch (Throwable $e) {
+            $call->markFailed($e->getMessage());
+
+            throw $e;
+        }
     }
 
     /**
@@ -240,10 +265,18 @@ class OcrService
      *
      * @param array<string, mixed> $options
      */
-    private function createCall(string $engine, ImageSource $image, array $options, bool $scheduled): OcrCall
-    {
+    private function createCall(
+        string $engine,
+        ImageSource $image,
+        array $options,
+        bool $scheduled,
+        string $operation = 'recognize',
+        ?string $extractor = null,
+    ): OcrCall {
         $call = new OcrCall();
         $call->engine      = $engine;
+        $call->operation   = $operation;
+        $call->extractor   = $extractor;
         $call->options     = $options ?: null;
         $call->source_type = $image->type()->value;
         // In-memory bytes are not retained for non-scheduled calls; store just
